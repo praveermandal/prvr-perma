@@ -4,7 +4,6 @@ import os
 import re
 import sys
 import uuid
-import random
 import requests
 from playwright.async_api import async_playwright
 from playwright_stealth import Stealth
@@ -47,7 +46,7 @@ async def run_strike(cookie, target_id):
 
         strike_script = """
             (msg, sig) => {
-                const baseEmojis = ["🛌 💤", "🥱 🛌", "🔥 🛌", "✨ 🛌", "💤 🥱", "🛌 💫", "🛌 ✨", "💤 🔥"];
+                const baseEmojis = ["🛌", "💤", "🥱", "🔥", "✨", "💫", "🌟", "🌙"];
                 let count = 0;
                 let emojiPool = [];
                 const log = (txt) => window.parent.postMessage({ type: 'LOG', text: txt }, '*');
@@ -86,11 +85,13 @@ async def run_strike(cookie, target_id):
                         rest(); return;
                     }
 
-                    const emoji = getUniqueEmoji();
-                    const line = msg + "  " + emoji;
-                    const finalBlock = (line + "\\n".repeat(2)).repeat(6) + line;
+                    let lines = [];
+                    for(let i = 0; i < 7; i++) {
+                        lines.push(msg + " " + getUniqueEmoji());
+                    }
+                    const finalBlock = lines.join("\\n".repeat(2));
                     
-                    log("Action: Sending Message " + (count + 1) + "/5 (Emoji: " + emoji + ")...");
+                    log("Action: Sending Message " + (count + 1) + "/5...");
                     sendText(finalBlock);
                     count++;
                     setTimeout(pulse, 5000 + Math.random() * 2000);
