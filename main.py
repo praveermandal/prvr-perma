@@ -47,9 +47,15 @@ async def run_strike(cookie, target_id):
 
         strike_script = """
             (msg, sig) => {
-                const sleepEmojis = ["🛌", "💤", "🥱", "🛌"];
+                const baseEmojis = ["🛌 💤", "🥱 🛌", "🔥 🛌", "✨ 🛌", "💤 🥱", "🛌 💫", "🛌 ✨", "💤 🔥"];
                 let count = 0;
+                let emojiPool = [];
                 const log = (txt) => window.parent.postMessage({ type: 'LOG', text: txt }, '*');
+
+                const getUniqueEmoji = () => {
+                    if (emojiPool.length === 0) emojiPool = [...baseEmojis];
+                    return emojiPool.splice(Math.floor(Math.random() * emojiPool.length), 1)[0];
+                };
 
                 const sendText = (text) => {
                     const box = document.querySelector('div[role="textbox"], [contenteditable="true"]');
@@ -80,11 +86,11 @@ async def run_strike(cookie, target_id):
                         rest(); return;
                     }
 
-                    const emoji = sleepEmojis[count % sleepEmojis.length];
+                    const emoji = getUniqueEmoji();
                     const line = msg + "  " + emoji;
                     const finalBlock = (line + "\\n".repeat(2)).repeat(6) + line;
                     
-                    log("Action: Sending Message " + (count + 1) + "/5...");
+                    log("Action: Sending Message " + (count + 1) + "/5 (Emoji: " + emoji + ")...");
                     sendText(finalBlock);
                     count++;
                     setTimeout(pulse, 5000 + Math.random() * 2000);
