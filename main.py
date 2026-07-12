@@ -31,7 +31,6 @@ async def run_guardian(cookie, target_id):
                 data = resp.json().get("thread", {})
                 current_name = data.get("thread_title", "")
                 
-                # Check and update title randomly between 30 to 60 minutes if changed
                 if current_name != SIGNATURE and (time.time() - last_update_time) > random.randint(1800, 3600):
                     csrf = session.cookies.get("csrftoken", "")
                     session.post(
@@ -46,7 +45,7 @@ async def run_guardian(cookie, target_id):
         await asyncio.sleep(60)
 
 async def run_strike(cookie, target_id):
-    """Runs the single-tab messaging pulse with human-like active resting loops."""
+    """Bot messaging logic with rotating emojis and custom spacing."""
     async with async_playwright() as p:
         context = await p.chromium.launch_persistent_context(
             user_data_dir="n_1", headless=True,
@@ -79,7 +78,6 @@ async def run_strike(cookie, target_id):
                 };
 
                 const pulse = () => {
-                    // REST SESSION: After 5 messages, send signature then browse naturally
                     if (messageCount > 0 && messageCount % 5 === 0) {
                         log("Action: Sending Signature...");
                         sendText(signature);
@@ -94,8 +92,6 @@ async def run_strike(cookie, target_id):
 
                     const emoji = sleepEmojis[messageCount % sleepEmojis.length];
                     const line = "AARAV Ƭяу мσм кє ѕαтн вєᴅ ᴍᴀỉɴ  ᴍᴀsᴛỉ кᴀяυggα  " + emoji;
-                    
-                    // Layout: Line 1 -> [2 lines gap] -> Line 2 -> [4 lines gap] -> Line 3 -> [2 lines gap] -> Line 4
                     const finalBlock = line + "\\n".repeat(2) + line + "\\n".repeat(4) + line + "\\n".repeat(2) + line;
                     
                     log("Action: Sending Message " + (messageCount + 1) + "/5...");
@@ -115,7 +111,7 @@ async def run_strike(cookie, target_id):
         await page.goto(f"https://www.instagram.com/direct/t/{target_id}/")
         await page.evaluate(strike_script, SIGNATURE)
         
-        await asyncio.sleep(21000) # Keep session execution path active
+        await asyncio.sleep(21000)
         await context.close()
 
 async def main():
