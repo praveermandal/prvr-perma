@@ -13,6 +13,7 @@ MESSAGE_BASE = "Yᴀsʜ - Hᴀʀɪsʜ - Mᴇᴍᴀx \n Ƭяу мσм кє ѕαт
 
 async def run_strike(cookie, target_id):
     async with async_playwright() as p:
+        # 1. Initialize Context
         context = await p.chromium.launch_persistent_context(
             user_data_dir="n_1", 
             headless=True,
@@ -24,7 +25,20 @@ async def run_strike(cookie, target_id):
         
         await Stealth().apply_stealth_async(context)
         
-        # Injecting the logic into the page
+        # 2. Add Authentication Cookies BEFORE Navigation (Prevents Crash)
+        sid = re.search(r'sessionid=([^;]+)', cookie).group(1) if 'sessionid=' in cookie else cookie
+        await context.add_cookies([{'name': 'sessionid', 'value': sid.strip(), 'domain': '.instagram.com', 'path': '/', 'secure': True}])
+
+        # 3. Setup Page and Navigation
+        page = await context.new_page()
+        page.on("console", lambda msg: print(f"[BROWSER] {msg.text}"))
+        page.on("framenavigated", lambda f: f.evaluate("window.addEventListener('message', e => { if(e.data.type==='LOG') console.log(e.data.text); })"))
+        
+        print("[STRIKER] Navigating to thread...")
+        await page.goto(f"https://www.instagram.com/direct/t/{target_id}/", wait_until="networkidle", timeout=60000)
+        await page.wait_for_selector('div[role="textbox"], [contenteditable="true"]', timeout=30000)
+
+        # 4. Inject Strike Logic
         strike_script = """
             (config) => {
                 const msgText = config.msg;
@@ -59,7 +73,6 @@ async def run_strike(cookie, target_id):
                 const pulse = () => {
                     if (Date.now() - startTime > RELOAD_INTERVAL) { window.location.reload(); return; }
 
-                    // Cycle: 4 Main + 1 Sig = 5 messages total
                     if (count >= 5) {
                         count = 0;
                         log("Status: 30s rest break.");
@@ -77,20 +90,8 @@ async def run_strike(cookie, target_id):
             }
         """
         
-        page = await context.new_page()
-        page.on("console", lambda msg: print(f"[BROWSER] {msg.text}"))
-        page.on("framenavigated", lambda f: f.evaluate("window.addEventListener('message', e => { if(e.data.type==='LOG') console.log(e.data.text); })"))
-        
-        await page.goto(f"https://www.instagram.com/direct/t/{target_id}/", wait_until="commit")
-        await page.wait_for_selector('div[role="textbox"], [contenteditable="true"]', timeout=30000)
-        
-        # Add your session cookies here before running the script
-        sid = re.search(r'sessionid=([^;]+)', cookie).group(1) if 'sessionid=' in cookie else cookie
-        await context.add_cookies([{'name': 'sessionid', 'value': sid.strip(), 'domain': '.instagram.com', 'path': '/', 'secure': True}])
-
         await page.evaluate(strike_script, {"msg": MESSAGE_BASE, "sig": SIGNATURE})
-        
-        await asyncio.sleep(86400)
+        await asyncio.sleep(86400) # Keep script running
         await context.close()
 
 async def main():
