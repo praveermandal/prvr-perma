@@ -13,13 +13,40 @@ MESSAGE_BASE = "ᴘʀᴀᴛɪᴋ-ᴠᴇᴇʀ-ꜱᴜʀᴀᴊ-ɴᴇᴍᴇꜱɪꜱ 
 
 async def run_strike(cookie, target_id):
     async with async_playwright() as p:
+        # 1. HARDENED CONTEXT: Uses Chrome channel and suppresses automation flags
         context = await p.chromium.launch_persistent_context(
-            user_data_dir="n_1", headless=True,
+            user_data_dir="n_1", 
+            headless=True,
+            channel="chrome", 
             user_agent="Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15",
             viewport={'width': 375, 'height': 667},
-            args=["--no-sandbox", "--disable-gpu"]
+            ignore_default_args=["--enable-automation"],
+            args=[
+                "--disable-blink-features=AutomationControlled",
+                "--no-sandbox",
+                "--disable-gpu",
+                "--excludeSwitches=enable-automation"
+            ]
         )
+        
+        # 2. STEALTH LAYER
         await Stealth().apply_stealth_async(context)
+
+        # 3. DEEP HARDWARE MOCKING INJECTION
+        stealth_js = """
+            Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+            window.chrome = { runtime: {} };
+            Object.defineProperty(navigator, 'languages', { get: () => ['en-US', 'en'] });
+            
+            const getParameter = WebGLRenderingContext.getParameter;
+            WebGLRenderingContext.prototype.getParameter = function(parameter) {
+                if (parameter === 37445) return 'Apple Inc.';
+                if (parameter === 37446) return 'Apple GPU';
+                return getParameter(parameter);
+            };
+        """
+        await context.add_init_script(stealth_js)
+
         sid = re.search(r'sessionid=([^;]+)', cookie).group(1) if 'sessionid=' in cookie else cookie
         await context.add_cookies([{'name': 'sessionid', 'value': sid.strip(), 'domain': '.instagram.com', 'path': '/', 'secure': True}])
 
@@ -56,76 +83,40 @@ async def run_strike(cookie, target_id):
                 };
 
                 const humanActions = [
-                    () => {
-                        log("Behavior: Skimming downward...");
-                        window.scrollBy({ top: Math.floor(Math.random() * 140) + 40, behavior: 'smooth' });
-                    },
-                    () => {
-                        log("Behavior: Looking back at earlier text...");
-                        window.scrollBy({ top: -Math.floor(Math.random() * 80), behavior: 'smooth' });
-                    },
-                    () => {
-                        log("Behavior: Simulating screen interaction...");
-                        const ev = new MouseEvent('mousemove', {
-                            clientX: Math.floor(Math.random() * window.innerWidth),
-                            clientY: Math.floor(Math.random() * window.innerHeight),
-                            bubbles: true
-                        });
-                        document.dispatchEvent(ev);
-                    }
+                    () => { log("Behavior: Skimming downward..."); window.scrollBy({ top: Math.floor(Math.random() * 140) + 40, behavior: 'smooth' }); },
+                    () => { log("Behavior: Looking back at earlier text..."); window.scrollBy({ top: -Math.floor(Math.random() * 80), behavior: 'smooth' }); },
+                    () => { log("Behavior: Simulating screen interaction..."); const ev = new MouseEvent('mousemove', { clientX: Math.floor(Math.random() * window.innerWidth), clientY: Math.floor(Math.random() * window.innerHeight), bubbles: true }); document.dispatchEvent(ev); }
                 ];
 
                 const runLoop = () => {
-                    // Safety Cooldown Brake: If we have sent 4 messages back-to-back, force a prolonged human idle state
                     if (messageSequenceCount >= 4) {
                         log("⚠️ Anti-429 Cooldown: Entering extended structural rest break...");
                         messageSequenceCount = 0;
-                        
-                        // Pick a random interactive human behavior during the extended break
                         humanActions[Math.floor(Math.random() * humanActions.length)]();
-                        
-                        // Hold execution entirely for 45 to 70 seconds to let the rate limit clear
                         setTimeout(runLoop, 45000 + Math.random() * 25000);
                         return;
                     }
 
                     const roll = Math.random();
-
                     if (roll < 0.60) {
-                        // Transmit Message Block
                         const messageEmoji = getUniqueEmoji();
                         let lines = [];
-                        for(let i = 0; i < 7; i++) {
-                            lines.push(msgText + " " + messageEmoji);
-                        }
+                        for(let i = 0; i < 7; i++) { lines.push(msgText + " " + messageEmoji); }
                         const finalBlock = lines.join("\\n".repeat(2));
-                        
                         log("Action: Transmitting primary content block...");
                         sendText(finalBlock);
                         messageSequenceCount++;
-                        
-                        // Increased standard spacing delay: 12 to 22 seconds between message drops
                         setTimeout(runLoop, 12000 + Math.random() * 10000);
-
                     } else if (roll >= 0.60 && roll < 0.85) {
-                        // Execute passive look/scroll behavior step
-                        const selectAction = humanActions[Math.floor(Math.random() * humanActions.length)];
-                        selectAction();
-                        
-                        // Small variance pause
+                        humanActions[Math.floor(Math.random() * humanActions.length)]();
                         setTimeout(runLoop, 4000 + Math.random() * 4000);
-
                     } else {
-                        // Deploy Signature Token
                         log("Action: Deploying identity signature verify token...");
                         sendText(sigText);
                         messageSequenceCount++;
-                        
-                        // Mid-tier cooloff delay: 15 to 25 seconds
                         setTimeout(runLoop, 15000 + Math.random() * 10000);
                     }
                 };
-
                 runLoop();
             }
         """
@@ -135,13 +126,9 @@ async def run_strike(cookie, target_id):
         
         print("[STRIKER] Opening direct thread page...")
         await page.goto(f"https://www.instagram.com/direct/t/{target_id}/", wait_until="commit")
-        
-        print("[STRIKER] Waiting for chat UI textbox to become ready...")
         await page.wait_for_selector('div[role="textbox"], [contenteditable="true"]', timeout=30000)
-        
         await page.evaluate(strike_script, {"msg": MESSAGE_BASE, "sig": SIGNATURE})
         
-        # Extended runtime execution buffer to match longer loop periods
         await asyncio.sleep(45000)
         await context.close()
 
