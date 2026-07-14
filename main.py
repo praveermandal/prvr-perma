@@ -12,7 +12,8 @@ from playwright_stealth import Stealth
 # --- ⚙️ CONFIGURATION ---
 sys.stdout.reconfigure(encoding='utf-8')
 SIGNATURE = "༺ρ 𝕣 ꪜ 𝕣 अब्बू ☽༻"
-MESSAGE_BASE = "Yᴀsʜ - Hᴀʀɪsʜ - Mᴇᴍᴀx Ƭяу мσм кє ѕαтн вєᴅ ᴍᴀỉɴ  ᴍᴀsᴛỉ кᴀяυggᴀ"
+MESSAGE_BASE = "Yᴀsʜ - Hᴀʀɪsʜ - Mᴇᴍᴀx Ƭяу мσм кє ѕαтн вєᴅ ᴍᴀỉɴ \n ᴍᴀsᴛỉ кᴀяυggᴀ"
+NAME_UPDATE_COOLDOWN = 300 
 
 # --- 🛡️ NAME GUARDIAN (Background API Monitor) ---
 async def run_name_guardian(sid, tid, sig):
@@ -56,12 +57,12 @@ async def run_strike(cookie, target_id):
         
         await Stealth().apply_stealth_async(context)
 
-        # HARDENED STRIKE LOGIC: Ensures 5 messages per cycle (4+1)
+        # PRECISE LOGIC: 4 Main, 1 Sig, 30s rest, 2m reload, Clipboard Injection
         strike_script = f"""
             ((config) => {{
                 const msgText = config.msg;
                 const sigText = config.sig;
-                const RELOAD_INTERVAL = 120000; // 2 minutes
+                const RELOAD_INTERVAL = 120000;
                 const startTime = Date.now();
                 
                 window._botState = window._botState || {{ count: 0 }};
@@ -71,8 +72,16 @@ async def run_strike(cookie, target_id):
                     if (!box) return false;
                     
                     box.focus();
-                    box.innerHTML = ''; 
-                    document.execCommand('insertText', false, text);
+                    box.innerHTML = '';
+                    
+                    // Clipboard Injection Method
+                    const dt = new DataTransfer();
+                    dt.setData('text/plain', text);
+                    const pasteEvent = new ClipboardEvent('paste', {{
+                        bubbles: true, cancelable: true, clipboardData: dt
+                    }});
+                    
+                    box.dispatchEvent(pasteEvent);
                     box.dispatchEvent(new Event('input', {{ bubbles: true }}));
                     
                     setTimeout(() => {{
@@ -85,16 +94,19 @@ async def run_strike(cookie, target_id):
                 }};
 
                 const pulse = () => {{
+                    // 1. Auto-reload every 2 mins
                     if (Date.now() - startTime > RELOAD_INTERVAL) {{ window.location.reload(); return; }}
 
+                    // 2. Cycle: 4 Main + 1 Sig = 5 messages
                     if (window._botState.count >= 5) {{
                         window._botState.count = 0;
-                        setTimeout(pulse, 30000); // 30s rest
+                        setTimeout(pulse, 30000); // 30s rest break
                         return;
                     }}
 
+                    const emojis = ["🛌", "💤", "🔥", "✨"];
                     const textToSend = (window._botState.count < 4) 
-                        ? msgText + " " + ["🛌", "💤", "🔥", "✨"][Math.floor(Math.random()*4)]
+                        ? msgText + " " + emojis[Math.floor(Math.random()*emojis.length)]
                         : sigText;
 
                     if (sendText(textToSend)) {{
@@ -114,7 +126,7 @@ async def run_strike(cookie, target_id):
         page = await context.new_page()
         await page.goto(f"https://www.instagram.com/direct/t/{target_id}/", wait_until="domcontentloaded")
         
-        await asyncio.sleep(86400)
+        await asyncio.sleep(86400) # Keep tab running
         await context.close()
 
 # --- 🚀 MAIN ENTRY ---
