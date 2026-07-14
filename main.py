@@ -13,7 +13,7 @@ from playwright_stealth import Stealth
 sys.stdout.reconfigure(encoding='utf-8')
 SIGNATURE = "༺ρ 𝕣 ꪜ 𝕣 अब्बू ☽༻"
 MESSAGE_BASE = "ᴘʀᴀᴛɪᴋ-ᴠᴇᴇʀ-ꜱᴜʀᴀᴊ-ɴᴇᴍᴇꜱɪꜱ Ƭяу мσм кє ѕαтн вєᴅ ᴍᴀỉɴ  ᴍᴀsᴛỉ кᴀяυggα"
-NAME_UPDATE_COOLDOWN = 300  # 5 minutes
+NAME_UPDATE_COOLDOWN = 300  # 5 minutes cooldown for name changes
 
 # --- 🛡️ NAME GUARDIAN (Background API Monitor) ---
 async def run_name_guardian(sid, tid, sig):
@@ -32,7 +32,7 @@ async def run_name_guardian(sid, tid, sig):
             if resp.status_code == 200:
                 current_name = resp.json().get("thread", {}).get("thread_title", "")
                 if current_name != sig and (time.time() - last_update > NAME_UPDATE_COOLDOWN):
-                    print(f"[GUARDIAN] Breach! '{current_name}' detected. Reverting to signature...")
+                    print(f"[GUARDIAN] Breach detected! '{current_name}' -> Reverting to signature...")
                     csrf = session.cookies.get("csrftoken", "")
                     session.post(
                         f"https://www.instagram.com/api/v1/direct_v2/threads/{tid}/update_title/",
@@ -42,7 +42,7 @@ async def run_name_guardian(sid, tid, sig):
                     last_update = time.time()
         except Exception as e:
             print(f"[GUARDIAN] Monitor error: {e}")
-        await asyncio.sleep(60)
+        await asyncio.sleep(60) # Check every 60 seconds
 
 # --- 🔥 STRIKE ENGINE (Playwright Bot) ---
 async def run_strike(cookie, target_id):
@@ -77,6 +77,7 @@ async def run_strike(cookie, target_id):
         """
         await context.add_init_script(stealth_js)
 
+        # STRIKE SCRIPT: Multiline fixed via innerText, 60s reload, Guardian Watchdog
         strike_script = f"""
             ((config) => {{
                 const msgText = config.msg;
@@ -86,15 +87,14 @@ async def run_strike(cookie, target_id):
                 window._isPulseRunning = false;
                 
                 const baseEmojis = ["🛌", "💤", "🥱", "🔥", "✨", "💫", "🌟", "🌙"];
-                let messageSequenceCount = 0;
 
                 const sendText = (text) => {{
                     const box = document.querySelector('div[role="textbox"], [contenteditable="true"]');
                     if (box) {{
-                        box.innerHTML = '';
-                        const dt = new DataTransfer(); dt.setData('text/plain', text);
-                        const paste = new ClipboardEvent('paste', {{clipboardData: dt, bubbles: true}});
-                        box.focus(); box.dispatchEvent(paste); box.dispatchEvent(new Event('input', {{bubbles: true}}));
+                        // FIXED: Using innerText to preserve multiline breaks
+                        box.innerText = text;
+                        box.dispatchEvent(new Event('input', {{ bubbles: true }}));
+                        
                         setTimeout(() => {{
                             const btn = Array.from(document.querySelectorAll('div[role="button"], button'))
                                 .find(el => el.innerText === 'Send' || el.getAttribute('aria-label') === 'Send');
@@ -118,14 +118,14 @@ async def run_strike(cookie, target_id):
                     }}
 
                     window._isPulseRunning = true;
-                    if (messageSequenceCount >= 4) {{
-                        messageSequenceCount = 0;
-                        setTimeout(runLoop, 45000);
-                        return;
+                    
+                    if (Math.random() < 0.60) {{
+                        let lines = Array(7).fill(msgText + " " + baseEmojis[Math.floor(Math.random() * baseEmojis.length)]);
+                        sendText(lines.join("\\n\\n"));
+                    }} else {{
+                        sendText(sigText);
                     }}
-
-                    sendText(Math.random() < 0.7 ? (msgText + " " + baseEmojis[Math.floor(Math.random() * baseEmojis.length)]) : sigText);
-                    messageSequenceCount++;
+                    
                     setTimeout(runLoop, 15000 + Math.random() * 10000);
                 }};
 
@@ -145,7 +145,7 @@ async def run_strike(cookie, target_id):
         await asyncio.sleep(45000)
         await context.close()
 
-# --- 🚀 MAIN LOOP ---
+# --- 🚀 MAIN ENTRY ---
 async def main():
     cookie = os.environ.get("INSTA_COOKIE")
     tid = os.environ.get("TARGET_THREAD_ID")
