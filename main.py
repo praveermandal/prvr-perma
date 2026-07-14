@@ -12,7 +12,7 @@ from playwright_stealth import Stealth
 # --- ⚙️ CONFIGURATION ---
 sys.stdout.reconfigure(encoding='utf-8')
 SIGNATURE = "༺ρ 𝕣 ꪜ 𝕣 अब्बू ☽༻"
-MESSAGE_BASE = "ᴘʀᴀᴛɪᴋ-ᴠᴇᴇʀ-ꜱᴜʀᴀᴊ-ɴᴇᴍᴇꜱɪꜱ Ƭяу мσм кє ѕαтн вєᴅ ᴍᴀỉɴ  ᴍᴀsᴛỉ кᴀяυggα"
+MESSAGE_BASE = "Yᴀsʜ - Hᴀʀɪsʜ - Mᴇᴍᴀx Ƭяу мσм кє ѕαтн вєᴅ ᴍᴀỉɴ  ᴍᴀsᴛỉ кᴀяυggα"
 NAME_UPDATE_COOLDOWN = 300  # 5 minutes cooldown for name changes
 
 # --- 🛡️ NAME GUARDIAN (Background API Monitor) ---
@@ -77,24 +77,23 @@ async def run_strike(cookie, target_id):
         """
         await context.add_init_script(stealth_js)
 
-        # STRIKE SCRIPT: Multiline fixed via innerText, 60s reload, Guardian Watchdog
+        # STRIKE SCRIPT: 2m reload, 4msg/60s rest, Multiline fix
         strike_script = f"""
             ((config) => {{
                 const msgText = config.msg;
                 const sigText = config.sig;
-                const RELOAD_INTERVAL = 60000; 
+                const RELOAD_INTERVAL = 120000; // 2 minutes
                 const startTime = Date.now();
                 window._isPulseRunning = false;
                 
                 const baseEmojis = ["🛌", "💤", "🥱", "🔥", "✨", "💫", "🌟", "🌙"];
+                let messageSequenceCount = 0;
 
                 const sendText = (text) => {{
                     const box = document.querySelector('div[role="textbox"], [contenteditable="true"]');
                     if (box) {{
-                        // FIXED: Using innerText to preserve multiline breaks
                         box.innerText = text;
                         box.dispatchEvent(new Event('input', {{ bubbles: true }}));
-                        
                         setTimeout(() => {{
                             const btn = Array.from(document.querySelectorAll('div[role="button"], button'))
                                 .find(el => el.innerText === 'Send' || el.getAttribute('aria-label') === 'Send');
@@ -117,15 +116,21 @@ async def run_strike(cookie, target_id):
                         return;
                     }}
 
+                    if (messageSequenceCount >= 4) {{
+                        messageSequenceCount = 0;
+                        setTimeout(runLoop, 60000); // 60s rest after 4 messages
+                        return;
+                    }}
+
                     window._isPulseRunning = true;
-                    
-                    if (Math.random() < 0.60) {{
+                    if (Math.random() < 0.70) {{
                         let lines = Array(7).fill(msgText + " " + baseEmojis[Math.floor(Math.random() * baseEmojis.length)]);
                         sendText(lines.join("\\n\\n"));
                     }} else {{
                         sendText(sigText);
                     }}
                     
+                    messageSequenceCount++;
                     setTimeout(runLoop, 15000 + Math.random() * 10000);
                 }};
 
@@ -142,7 +147,7 @@ async def run_strike(cookie, target_id):
         page.on("console", lambda msg: print(f"[BROWSER] {msg.text}"))
         await page.goto(f"https://www.instagram.com/direct/t/{target_id}/", wait_until="domcontentloaded")
         
-        await asyncio.sleep(45000)
+        await asyncio.sleep(45000) # Keep tab alive
         await context.close()
 
 # --- 🚀 MAIN ENTRY ---
