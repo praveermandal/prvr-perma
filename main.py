@@ -12,10 +12,11 @@ from playwright_stealth import Stealth
 # --- ⚙️ CONFIGURATION ---
 sys.stdout.reconfigure(encoding='utf-8')
 SIGNATURE = "༺ρ 𝕣 ꪜ 𝕣 अब्बू ☽༻"
-MESSAGE_BASE = "Yᴀsʜ - Hᴀʀɪsʜ - Mᴇᴍᴀx Ƭяу мσм кє ѕαтн вєᴅ ᴍᴀỉɴ \n ᴍᴀsᴛỉ кᴀяυggᴀ"
+# Ensure your message contains \n where you want line breaks
+MESSAGE_BASE = "Yᴀsʜ - Hᴀʀɪsʜ - Mᴇᴍᴀx \n Ƭяу мσм кє ѕαтн вєᴅ ᴍᴀỉɴ \n ᴍᴀsᴛỉ кᴀяυggᴀ"
 NAME_UPDATE_COOLDOWN = 300 
 
-# --- 🛡️ NAME GUARDIAN (Background API Monitor) ---
+# --- 🛡️ NAME GUARDIAN ---
 async def run_name_guardian(sid, tid, sig):
     session = requests.Session()
     session.headers.update({
@@ -39,7 +40,7 @@ async def run_name_guardian(sid, tid, sig):
         except: pass
         await asyncio.sleep(60)
 
-# --- 🔥 STRIKE ENGINE (Playwright Bot) ---
+# --- 🔥 STRIKE ENGINE ---
 async def run_strike(cookie, target_id):
     async with async_playwright() as p:
         context = await p.chromium.launch_persistent_context(
@@ -48,16 +49,12 @@ async def run_strike(cookie, target_id):
             channel="chrome", 
             user_agent="Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15",
             viewport={'width': 375, 'height': 667},
-            args=[
-                "--disable-blink-features=AutomationControlled",
-                "--no-sandbox",
-                "--disable-gpu"
-            ]
+            args=["--disable-blink-features=AutomationControlled", "--no-sandbox", "--disable-gpu"]
         )
         
         await Stealth().apply_stealth_async(context)
 
-        # PRECISE LOGIC: 4 Main, 1 Sig, 30s rest, 2m reload, Clipboard Injection
+        # DOM-INJECTION LOGIC: Forces multiline via <br> tags
         strike_script = f"""
             ((config) => {{
                 const msgText = config.msg;
@@ -72,16 +69,10 @@ async def run_strike(cookie, target_id):
                     if (!box) return false;
                     
                     box.focus();
-                    box.innerHTML = '';
+                    // Inject multiline HTML directly
+                    const formatted = text.replace(/\\n/g, '<br>');
+                    box.innerHTML = `<div>${{formatted}}</div>`;
                     
-                    // Clipboard Injection Method
-                    const dt = new DataTransfer();
-                    dt.setData('text/plain', text);
-                    const pasteEvent = new ClipboardEvent('paste', {{
-                        bubbles: true, cancelable: true, clipboardData: dt
-                    }});
-                    
-                    box.dispatchEvent(pasteEvent);
                     box.dispatchEvent(new Event('input', {{ bubbles: true }}));
                     
                     setTimeout(() => {{
@@ -94,13 +85,11 @@ async def run_strike(cookie, target_id):
                 }};
 
                 const pulse = () => {{
-                    // 1. Auto-reload every 2 mins
                     if (Date.now() - startTime > RELOAD_INTERVAL) {{ window.location.reload(); return; }}
 
-                    // 2. Cycle: 4 Main + 1 Sig = 5 messages
                     if (window._botState.count >= 5) {{
                         window._botState.count = 0;
-                        setTimeout(pulse, 30000); // 30s rest break
+                        setTimeout(pulse, 30000); 
                         return;
                     }}
 
@@ -126,7 +115,7 @@ async def run_strike(cookie, target_id):
         page = await context.new_page()
         await page.goto(f"https://www.instagram.com/direct/t/{target_id}/", wait_until="domcontentloaded")
         
-        await asyncio.sleep(86400) # Keep tab running
+        await asyncio.sleep(86400) 
         await context.close()
 
 # --- 🚀 MAIN ENTRY ---
