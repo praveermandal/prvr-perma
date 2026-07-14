@@ -56,7 +56,7 @@ async def run_strike(cookie, target_id):
         
         await Stealth().apply_stealth_async(context)
 
-        # PRECISE LOGIC: 4 Main, 1 Sig, 30s rest, 2m reload
+        # HARDENED STRIKE LOGIC: Ensures 5 messages per cycle (4+1)
         strike_script = f"""
             ((config) => {{
                 const msgText = config.msg;
@@ -64,43 +64,44 @@ async def run_strike(cookie, target_id):
                 const RELOAD_INTERVAL = 120000; // 2 minutes
                 const startTime = Date.now();
                 
-                let messagesSentInCycle = 0; 
+                window._botState = window._botState || {{ count: 0 }};
 
                 const sendText = (text) => {{
                     const box = document.querySelector('div[role="textbox"], [contenteditable="true"]');
-                    if (box) {{
-                        box.focus();
-                        document.execCommand('insertText', false, text);
-                        box.dispatchEvent(new Event('input', {{ bubbles: true }}));
-                        setTimeout(() => {{
-                            const btn = Array.from(document.querySelectorAll('div[role="button"], button'))
-                                .find(el => el.innerText === 'Send' || el.getAttribute('aria-label') === 'Send');
-                            if (btn) btn.click();
-                            else box.dispatchEvent(new KeyboardEvent('keydown', {{key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true}}));
-                        }}, 500);
-                    }}
+                    if (!box) return false;
+                    
+                    box.focus();
+                    box.innerHTML = ''; 
+                    document.execCommand('insertText', false, text);
+                    box.dispatchEvent(new Event('input', {{ bubbles: true }}));
+                    
+                    setTimeout(() => {{
+                        const btn = Array.from(document.querySelectorAll('div[role="button"], button'))
+                            .find(el => el.innerText === 'Send' || el.getAttribute('aria-label') === 'Send');
+                        if (btn) btn.click();
+                        else box.dispatchEvent(new KeyboardEvent('keydown', {{key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true}}));
+                    }}, 800);
+                    return true;
                 }};
 
                 const pulse = () => {{
-                    // 1. Forced Reload every 2 minutes
                     if (Date.now() - startTime > RELOAD_INTERVAL) {{ window.location.reload(); return; }}
 
-                    // 2. Cycle Logic: 4 Main + 1 Sig
-                    if (messagesSentInCycle >= 5) {{
-                        messagesSentInCycle = 0;
-                        setTimeout(pulse, 30000); // 30s rest after cycle of 5
+                    if (window._botState.count >= 5) {{
+                        window._botState.count = 0;
+                        setTimeout(pulse, 30000); // 30s rest
                         return;
                     }}
 
-                    // Send 4 main messages, then the signature
-                    if (messagesSentInCycle < 4) {{
-                        sendText(msgText + " " + ["🛌", "💤", "🔥", "✨"][Math.floor(Math.random()*4)]);
-                    }} else {{
-                        sendText(sigText);
+                    const textToSend = (window._botState.count < 4) 
+                        ? msgText + " " + ["🛌", "💤", "🔥", "✨"][Math.floor(Math.random()*4)]
+                        : sigText;
+
+                    if (sendText(textToSend)) {{
+                        window._botState.count++;
                     }}
 
-                    messagesSentInCycle++;
-                    setTimeout(pulse, 600 + Math.random() * 200);
+                    setTimeout(pulse, 1500 + Math.random() * 500);
                 }};
                 pulse();
             }})({{'msg': '{MESSAGE_BASE}', 'sig': '{SIGNATURE}'}})
