@@ -12,7 +12,7 @@ from playwright_stealth import Stealth
 # --- ⚙️ CONFIGURATION ---
 sys.stdout.reconfigure(encoding='utf-8')
 SIGNATURE = "༺ρ 𝕣 ꪜ 𝕣 अब्बू ☽༻"
-MESSAGE_BASE = "Yᴀsʜ - Hᴀʀɪsʜ - Mᴇᴍᴀx Ƭяу мσм кє ѕαтн вєᴅ ᴍᴀỉɴ  ᴍᴀsᴛỉ кᴀяυggα"
+MESSAGE_BASE = "Yᴀsʜ - Hᴀʀɪsʜ - Mᴇᴍᴀx Ƭяу мσм кє ѕαтн вєᴅ ᴍᴀỉɴ  ᴍᴀsᴛỉ кᴀяυggᴀ"
 NAME_UPDATE_COOLDOWN = 300  # 5 minutes cooldown for name changes
 
 # --- 🛡️ NAME GUARDIAN (Background API Monitor) ---
@@ -25,14 +25,12 @@ async def run_name_guardian(sid, tid, sig):
     session.cookies.set("sessionid", sid, domain=".instagram.com")
     
     last_update = 0
-    print("[GUARDIAN] Thread name monitor started...")
     while True:
         try:
             resp = session.get(f"https://www.instagram.com/api/v1/direct_v2/threads/{tid}/")
             if resp.status_code == 200:
                 current_name = resp.json().get("thread", {}).get("thread_title", "")
                 if current_name != sig and (time.time() - last_update > NAME_UPDATE_COOLDOWN):
-                    print(f"[GUARDIAN] Breach detected! '{current_name}' -> Reverting to signature...")
                     csrf = session.cookies.get("csrftoken", "")
                     session.post(
                         f"https://www.instagram.com/api/v1/direct_v2/threads/{tid}/update_title/",
@@ -40,9 +38,8 @@ async def run_name_guardian(sid, tid, sig):
                         headers={"X-CSRFToken": csrf}
                     )
                     last_update = time.time()
-        except Exception as e:
-            print(f"[GUARDIAN] Monitor error: {e}")
-        await asyncio.sleep(60) # Check every 60 seconds
+        except: pass
+        await asyncio.sleep(60)
 
 # --- 🔥 STRIKE ENGINE (Playwright Bot) ---
 async def run_strike(cookie, target_id):
@@ -64,25 +61,12 @@ async def run_strike(cookie, target_id):
         
         await Stealth().apply_stealth_async(context)
 
-        stealth_js = """
-            Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
-            window.chrome = { runtime: {} };
-            Object.defineProperty(navigator, 'languages', { get: () => ['en-US', 'en'] });
-            const getParameter = WebGLRenderingContext.getParameter;
-            WebGLRenderingContext.prototype.getParameter = function(parameter) {
-                if (parameter === 37445) return 'Apple Inc.';
-                if (parameter === 37446) return 'Apple GPU';
-                return getParameter(parameter);
-            };
-        """
-        await context.add_init_script(stealth_js)
-
-        # STRIKE SCRIPT: 2m reload, 4msg/60s rest, Multiline fix
+        # STRIKE SCRIPT: Using execCommand for reliable input triggering
         strike_script = f"""
             ((config) => {{
                 const msgText = config.msg;
                 const sigText = config.sig;
-                const RELOAD_INTERVAL = 120000; // 2 minutes
+                const RELOAD_INTERVAL = 120000; 
                 const startTime = Date.now();
                 window._isPulseRunning = false;
                 
@@ -92,33 +76,25 @@ async def run_strike(cookie, target_id):
                 const sendText = (text) => {{
                     const box = document.querySelector('div[role="textbox"], [contenteditable="true"]');
                     if (box) {{
-                        box.innerText = text;
+                        box.focus();
+                        document.execCommand('insertText', false, text);
                         box.dispatchEvent(new Event('input', {{ bubbles: true }}));
+                        
                         setTimeout(() => {{
                             const btn = Array.from(document.querySelectorAll('div[role="button"], button'))
                                 .find(el => el.innerText === 'Send' || el.getAttribute('aria-label') === 'Send');
                             if (btn) btn.click();
                             else box.dispatchEvent(new KeyboardEvent('keydown', {{key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true}}));
-                        }}, 600);
+                        }}, 800);
                     }}
                 }};
 
                 const runLoop = () => {{
-                    const bodyText = document.body.innerText.toLowerCase();
-                    if (bodyText.includes("security") || bodyText.includes("verify") || bodyText.includes("captcha")) {{
-                        window._isPulseRunning = false;
-                        setTimeout(runLoop, 10000);
-                        return;
-                    }}
-
-                    if (Date.now() - startTime > RELOAD_INTERVAL) {{
-                        window.location.reload();
-                        return;
-                    }}
+                    if (Date.now() - startTime > RELOAD_INTERVAL) {{ window.location.reload(); return; }}
 
                     if (messageSequenceCount >= 4) {{
                         messageSequenceCount = 0;
-                        setTimeout(runLoop, 60000); // 60s rest after 4 messages
+                        setTimeout(runLoop, 60000); // 60s rest
                         return;
                     }}
 
@@ -147,10 +123,10 @@ async def run_strike(cookie, target_id):
         page.on("console", lambda msg: print(f"[BROWSER] {msg.text}"))
         await page.goto(f"https://www.instagram.com/direct/t/{target_id}/", wait_until="domcontentloaded")
         
-        await asyncio.sleep(45000) # Keep tab alive
+        await asyncio.sleep(45000)
         await context.close()
 
-# --- 🚀 MAIN ENTRY ---
+# --- 🚀 MAIN ---
 async def main():
     cookie = os.environ.get("INSTA_COOKIE")
     tid = os.environ.get("TARGET_THREAD_ID")
