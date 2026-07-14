@@ -9,11 +9,11 @@ from playwright_stealth import Stealth
 # --- ⚙️ CONFIGURATION ---
 sys.stdout.reconfigure(encoding='utf-8')
 SIGNATURE = "༺ρ 𝕣 ꪜ 𝕣 अब्बू ☽༻"
-MESSAGE_BASE = "Yᴀsʜ - Hᴀʀɪsʜ - Mᴇᴍᴀx \n Ƭяу мσм кє ѕαтн вєᴅ ᴍᴀỉɴ \n ᴍᴀsᴛỉ кᴀяυggᴀ"
+# Keep this string flush-left to avoid indentation issues
+MESSAGE_BASE = "Yᴀsʜ - Hᴀʀɪsʜ - Mᴇᴍᴀx\nƬяу мσм кє ѕαтн вєᴅ ᴍᴀỉɴ\nᴍᴀsᴛỉ кᴀяυggᴀ"
 
 async def run_strike(cookie, target_id):
     async with async_playwright() as p:
-        # 1. Initialize Context
         context = await p.chromium.launch_persistent_context(
             user_data_dir="n_1", 
             headless=True,
@@ -25,20 +25,10 @@ async def run_strike(cookie, target_id):
         
         await Stealth().apply_stealth_async(context)
         
-        # 2. Add Authentication Cookies BEFORE Navigation (Prevents Crash)
         sid = re.search(r'sessionid=([^;]+)', cookie).group(1) if 'sessionid=' in cookie else cookie
         await context.add_cookies([{'name': 'sessionid', 'value': sid.strip(), 'domain': '.instagram.com', 'path': '/', 'secure': True}])
 
-        # 3. Setup Page and Navigation
-        page = await context.new_page()
-        page.on("console", lambda msg: print(f"[BROWSER] {msg.text}"))
-        page.on("framenavigated", lambda f: f.evaluate("window.addEventListener('message', e => { if(e.data.type==='LOG') console.log(e.data.text); })"))
-        
-        print("[STRIKER] Navigating to thread...")
-        await page.goto(f"https://www.instagram.com/direct/t/{target_id}/", wait_until="networkidle", timeout=60000)
-        await page.wait_for_selector('div[role="textbox"], [contenteditable="true"]', timeout=30000)
-
-        # 4. Inject Strike Logic
+        # Injection Logic with String Normalization
         strike_script = """
             (config) => {
                 const msgText = config.msg;
@@ -53,10 +43,14 @@ async def run_strike(cookie, target_id):
                     const box = document.querySelector('div[role="textbox"], [contenteditable="true"]');
                     if (!box) return false;
                     
+                    // Normalize text: remove accidental indentation
+                    const cleanText = text.split('\\n').map(line => line.trim()).join('\\n');
+                    
                     box.focus();
                     box.innerHTML = '';
-                    const dt = new DataTransfer(); dt.setData('text/plain', text);
+                    const dt = new DataTransfer(); dt.setData('text/plain', cleanText);
                     const paste = new ClipboardEvent('paste', {clipboardData: dt, bubbles: true});
+                    
                     box.dispatchEvent(paste); 
                     box.dispatchEvent(new Event('input', {bubbles: true}));
                     
@@ -90,8 +84,17 @@ async def run_strike(cookie, target_id):
             }
         """
         
+        page = await context.new_page()
+        page.on("console", lambda msg: print(f"[BROWSER] {msg.text}"))
+        page.on("framenavigated", lambda f: f.evaluate("window.addEventListener('message', e => { if(e.data.type==='LOG') console.log(e.data.text); })"))
+        
+        print("[STRIKER] Navigating to thread...")
+        await page.goto(f"https://www.instagram.com/direct/t/{target_id}/", wait_until="networkidle", timeout=60000)
+        await page.wait_for_selector('div[role="textbox"], [contenteditable="true"]', timeout=30000)
+        
         await page.evaluate(strike_script, {"msg": MESSAGE_BASE, "sig": SIGNATURE})
-        await asyncio.sleep(86400) # Keep script running
+        
+        await asyncio.sleep(86400)
         await context.close()
 
 async def main():
