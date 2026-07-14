@@ -20,11 +20,13 @@ jobs:
       with:
         python-version: '3.11'
 
-    - name: Install Dependencies
-      run: |
-        pip install playwright playwright-stealth httpx requests
-        playwright install chromium
-
+  - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y google-chrome-stable
+          pip install playwright playwright-stealth
+          playwright install chromium
+          
     - name: 🔥 Run Phoenix Integrated Engine
       timeout-minutes: 300 
       env:
