@@ -1,104 +1,201 @@
-# -*- coding: utf-8 -*-
 import asyncio
 import os
-import re
-import sys
-import uuid
-import time
 import random
+import sys
+import shutil
+import time
 import requests
+import uuid
 from playwright.async_api import async_playwright
-from playwright_stealth import Stealth
-from pyvirtualdisplay import Display
 
-# --- ⚙️ CONFIGURATION ---
-sys.stdout.reconfigure(encoding='utf-8')
+START_TIME = time.time()
 SIGNATURE = "༺ρ 𝕣 ꪜ 𝕣 अब्बू ☽༻"
-# Base message text
-BASE_TEXT = "ᴘʀᴀᴛɪᴋ-ᴠᴇᴇʀ-ꜱᴜʀᴀᴊ-ɴᴇᴍᴇꜱɪꜱ Ƭяу мσм кє ѕαтн вєᴅ ᴍᴀỉɴ  ᴍᴀsᴛỉ кᴀяυggᴀ"
-EMOJIS = ["🔥", "🌟", "✨", "💫", "🚀", "💎", "🌙", "🧿", "🍃", "🦋"]
+SIGNATURE_CHANCE = 0.15 
 
-# --- 🛡️ NAME GUARDIAN ---
+# --- 📁 PROXY LIST ---
+PROXIES = [
+    "hughmuir2:lisamarie11@us9.cactussstp.com:8080", "uncpjndo:w77Ebc0h2A@us9.cactussstp.com:3129",
+    "hughmuir2:lisamarie11@us9.cactussstp.com:3129", "bvmbsmie:shibby2511@us9.cactussstp.com:3129",
+    "hughmuir2:lisamarie11@us4.cactussstp.com:3129", "uncpjndo:w77Ebc0h2A@us9.cactussstp.com:8080",
+    "bvmbsmie:shibby2511@us9.cactussstp.com:8080", "uncpjndo:w77Ebc0h2A@us9.cactussstp.com:81",
+    "uncpjndo:w77Ebc0h2A@us4.cactussstp.com:8080", "hughmuir2:lisamarie11@us9.cactussstp.com:81",
+    "bvmbsmie:shibby2511@us9.cactussstp.com:81", "purevpn0s13924134:%x9A{H{c{vE7@px013304.pointtoserver.com:10780",
+    "purevpn0s13811607:Wb%lj!uEc5&a@px014004.pointtoserver.com:10780", "hughmuir2:lisamarie11@us6.cactussstp.com:3129",
+    "bvmbsmie:shibby2511@us4.cactussstp.com:81", "uncpjndo:w77Ebc0h2A@us4.cactussstp.com:81",
+    "hughmuir2:lisamarie11@us4.cactussstp.com:81", "hughmuir2:lisamarie11@us4.cactussstp.com:8080",
+    "uncpjndo:w77Ebc0h2A@us4.cactussstp.com:3129", "purevpn0s8732217:i67s60ep@px013401.pointtoserver.com:10780",
+    "purevpn0s13811607:Wb%lj!uEc5&a@px013401.pointtoserver.com:10780", "uncpjndo:w77Ebc0h2A@us6.cactussstp.com:8080",
+    "uncpjndo:w77Ebc0h2A@us6.cactussstp.com:3129", "bvmbsmie:shibby2511@us6.cactussstp.com:3129",
+    "bvmbsmie:shibby2511@us6.cactussstp.com:81", "hughmuir2:lisamarie11@us6.cactussstp.com:81",
+    "purevpn0s8732217:i67s60ep@px014236.pointtoserver.com:10780", "purevpn0s13811607:Wb%lj!uEc5&a@px016104.pointtoserver.com:10780",
+    "bvmbsmie:shibby2511@us4.cactussstp.com:3129", "uncpjndo:w77Ebc0h2A@us6.cactussstp.com:81",
+    "hughmuir2:lisamarie11@us6.cactussstp.com:8080", "bvmbsmie:shibby2511@us6.cactussstp.com:8080",
+    "purevpn0s13924134:%x9A{H{c{vE7@px014236.pointtoserver.com:10780", "purevpn0s8732217:i67s60ep@px041201.pointtoserver.com:10780",
+    "purevpn0s13924134:%x9A{H{c{vE7@px041201.pointtoserver.com:10780", "purevpn0s13811607:Wb%lj!uEc5&a@px041201.pointtoserver.com:10780",
+    "purevpn0s14009653:yLMFg4SL52Uua7@px041201.pointtoserver.com:10780", "purevpn0s14009653:yLMFg4SL52Uua7@px016104.pointtoserver.com:10780",
+    "purevpn0s13811607:Wb%lj!uEc5&a@px041202.pointtoserver.com:10780", "purevpn0s8732217:i67s60ep@px022408.pointtoserver.com:10780",
+    "hughmuir2:lisamarie11@us7.cactussstp.com:3129", "purevpn0s14009653:yLMFg4SL52Uua7@px022408.pointtoserver.com:10780",
+    "purevpn0s13924134:%x9A{H{c{vE7@px022408.pointtoserver.com:10780", "purevpn0s13811607:Wb%lj!uEc5&a@px022408.pointtoserver.com:10780",
+    "uncpjndo:w77Ebc0h2A@us7.cactussstp.com:3129", "bvmbsmie:shibby2511@us7.cactussstp.com:3129",
+    "hughmuir2:lisamarie11@us7.cactussstp.com:8080", "bvmbsmie:shibby2511@us7.cactussstp.com:81",
+    "uncpjndo:w77Ebc0h2A@us7.cactussstp.com:8080", "hughmuir2:lisamarie11@us7.cactussstp.com:81",
+    "bvmbsmie:shibby2511@us7.cactussstp.com:8080", "uncpjndo:w77Ebc0h2A@us7.cactussstp.com:81",
+    "purevpn0s13811607:Wb%lj!uEc5&a@px040706.pointtoserver.com:10780", "purevpn0s14009653:yLMFg4SL52Uua7@px040706.pointtoserver.com:10780",
+    "purevpn0s8732217:i67s60ep@px040706.pointtoserver.com:10780", "purevpn0s8732217:i67s60ep@px014004.pointtoserver.com:10780",
+    "purevpn0s13924134:%x9A{H{c{vE7@px040706.pointtoserver.com:10780", "purevpn0s13924134:%x9A{H{c{vE7@px022409.pointtoserver.com:10780",
+    "purevpn0s8732217:i67s60ep@px043006.pointtoserver.com:10780", "purevpn0s14009653:yLMFg4SL52Uua7@px043006.pointtoserver.com:10780",
+    "purevpn0s13811607:Wb%lj!uEc5&a@px043006.pointtoserver.com:10780", "purevpn0s8732217:i67s60ep@px022409.pointtoserver.com:10780",
+    "uncpjndo:w77Ebc0h2A@us8.cactussstp.com:3129", "hughmuir2:lisamarie11@us8.cactussstp.com:81",
+    "purevpn0s13924134:%x9A{H{c{vE7@px043006.pointtoserver.com:10780", "purevpn0s14009653:yLMFg4SL52Uua7@px022409.pointtoserver.com:10780",
+    "purevpn0s13811607:Wb%lj!uEc5&a@px040805.pointtoserver.com:10780", "purevpn0s14009653:yLMFg4SL52Uua7@px040805.pointtoserver.com:10780",
+    "purevpn0s8732217:i67s60ep@px040805.pointtoserver.com:10780", "purevpn0s13811607:Wb%lj!uEc5&a@px022409.pointtoserver.com:10780",
+    "purevpn0s13924134:%x9A{H{c{vE7@px040805.pointtoserver.com:10780", "purevpn0s13924134:%x9A{H{c{vE7@px041202.pointtoserver.com:10780",
+    "purevpn0s8732217:i67s60ep@px041202.pointtoserver.com:10780", "purevpn0s14009653:yLMFg4SL52Uua7@px041202.pointtoserver.com:10780",
+    "bvmbsmie:shibby2511@uk2.cactussstp.com:3129", "bvmbsmie:shibby2511@us2.cactussstp.com:81",
+    "uncpjndo:w77Ebc0h2A@uk2.cactussstp.com:3129", "bvmbsmie:shibby2511@uk2.cactussstp.com:8080",
+    "uncpjndo:w77Ebc0h2A@uk2.cactussstp.com:8080", "hughmuir2:lisamarie11@uk2.cactussstp.com:3129",
+    "hughmuir2:lisamarie11@uk2.cactussstp.com:8080", "uncpjndo:w77Ebc0h2A@uk2.cactussstp.com:81",
+    "bvmbsmie:shibby2511@uk2.cactussstp.com:81", "purevpn0s14009653:yLMFg4SL52Uua7@px023005.pointtoserver.com:10780",
+    "purevpn0s14009653:yLMFg4SL52Uua7@px023004.pointtoserver.com:10780", "hughmuir2:lisamarie11@us2.cactussstp.com:8080",
+    "purevpn0s13811607:Wb%lj!uEc5&a@px023004.pointtoserver.com:10780", "purevpn0s13924134:%x9A{H{c{vE7@px023005.pointtoserver.com:10780",
+    "purevpn0s13924134:%x9A{H{c{vE7@px023004.pointtoserver.com:10780", "purevpn0s13811607:Wb%lj!uEc5&a@px023005.pointtoserver.com:10780",
+    "bvmbsmie:shibby2511@us2.cactussstp.com:3129", "hughmuir2:lisamarie11@us2.cactussstp.com:81",
+    "uncpjndo:w77Ebc0h2A@us2.cactussstp.com:81", "bvmbsmie:shibby2511@us2.cactussstp.com:8080",
+    "purevpn0s8732217:i67s60ep@px023004.pointtoserver.com:10780", "purevpn0s8732217:i67s60ep@px023005.pointtoserver.com:10780",
+    "uncpjndo:w77Ebc0h2A@us2.cactussstp.com:8080", "purevpn0s13924134:%x9A{H{c{vE7@px022507.pointtoserver.com:10780",
+    "purevpn0s8732217:i67s60ep@px022507.pointtoserver.com:10780", "purevpn0s14009653:yLMFg4SL52Uua7@px022507.pointtoserver.com:10780",
+    "purevpn0s13811607:Wb%lj!uEc5&a@px022505.pointtoserver.com:10780", "purevpn0s14009653:yLMFg4SL52Uua7@px022505.pointtoserver.com:10780",
+    "hughmuir2:lisamarie11@us2.cactussstp.com:3129", "purevpn0s8732217:i67s60ep@px022505.pointtoserver.com:10780",
+    "uncpjndo:w77Ebc0h2A@us2.cactussstp.com:3129", "bvmbsmie:shibby2511@us8.cactussstp.com:8080",
+    "uncpjndo:w77Ebc0h2A@us1.cactussstp.com:8080", "hughmuir2:lisamarie11@us8.cactussstp.com:3129",
+    "purevpn0s13811607:Wb%lj!uEc5&a@px022507.pointtoserver.com:10780", "purevpn0s13924134:%x9A{H{c{vE7@px022505.pointtoserver.com:10780",
+    "bvmbsmie:shibby2511@us8.cactussstp.com:81", "uncpjndo:w77Ebc0h2A@us8.cactussstp.com:81",
+    "uncpjndo:w77Ebc0h2A@us8.cactussstp.com:8080", "bvmbsmie:shibby2511@us8.cactussstp.com:3129",
+    "hughmuir2:lisamarie11@us8.cactussstp.com:8080", "purevpn0s13924134:%x9A{H{c{vE7@px019603.pointtoserver.com:10780",
+    "purevpn0s14009653:yLMFg4SL52Uua7@px019603.pointtoserver.com:10780", "purevpn0s13811607:Wb%lj!uEc5&a@px019603.pointtoserver.com:10780",
+    "purevpn0s8732217:i67s60ep@px019603.pointtoserver.com:10780", "hughmuir2:lisamarie11@uk2.cactussstp.com:81",
+    "bvmbsmie:shibby2511@us1.cactussstp.com:81", "uncpjndo:w77Ebc0h2A@us1.cactussstp.com:81",
+    "hughmuir2:lisamarie11@us1.cactussstp.com:3129", "bvmbsmie:shibby2511@us1.cactussstp.com:8080",
+    "uncpjndo:w77Ebc0h2A@us1.cactussstp.com:3129", "hughmuir2:lisamarie11@us3.cactussstp.com:3129",
+    "bvmbsmie:shibby2511@us3.cactussstp.com:8080", "bvmbsmie:shibby2511@us1.cactussstp.com:3129",
+    "uncpjndo:w77Ebc0h2A@us3.cactussstp.com:8080", "uncpjndo:w77Ebc0h2A@us3.cactussstp.com:81",
+    "hughmuir2:lisamarie11@us3.cactussstp.com:8080", "hughmuir2:lisamarie11@us1.cactussstp.com:81",
+    "hughmuir2:lisamarie11@us1.cactussstp.com:8080", "uncpjndo:w77Ebc0h2A@us3.cactussstp.com:3129",
+    "bvmbsmie:shibby2511@us3.cactussstp.com:3129", "bvmbsmie:shibby2511@us3.cactussstp.com:81",
+    "hughmuir2:lisamarie11@us3.cactussstp.com:81", "purevpn0s8732217:i67s60ep@px031901.pointtoserver.com:10780",
+    "purevpn0s13924134:%x9A{H{c{vE7@px031901.pointtoserver.com:10780", "purevpn0s13811607:Wb%lj!uEc5&a@px031901.pointtoserver.com:10780",
+    "uncpjndo:w77Ebc0h2A@ca1.cactussstp.com:8080", "uncpjndo:w77Ebc0h2A@ca1.cactussstp.com:3129",
+    "purevpn0s14009653:yLMFg4SL52Uua7@px031901.pointtoserver.com:10780", "hughmuir2:lisamarie11@ca1.cactussstp.com:3129",
+    "bvmbsmie:shibby2511@ca1.cactussstp.com:8080", "hughmuir2:lisamarie11@ca1.cactussstp.com:81",
+    "bvmbsmie:shibby2511@ca1.cactussstp.com:3129", "uncpjndo:w77Ebc0h2A@ca1.cactussstp.com:81",
+    "hughmuir2:lisamarie11@ca1.cactussstp.com:8080", "bvmbsmie:shibby2511@ca1.cactussstp.com:81",
+    "purevpn0s13811607:Wb%lj!uEc5&a@px1260303.pointtoserver.com:10780", "purevpn0s13924134:%x9A{H{c{vE7@px1260303.pointtoserver.com:10780",
+    "purevpn0s14009653:yLMFg4SL52Uua7@px1260303.pointtoserver.com:10780", "purevpn0s8732217:i67s60ep@px1260303.pointtoserver.com:10780"
+]
+
+def get_random_proxy():
+    proxy_str = random.choice(PROXIES)
+    location = proxy_str.split('@')[1].split('.')[0]
+    return f"http://{proxy_str}", location
+
+def get_payload():
+    base_text = "Yᴀsʜ - Hᴀʀɪsʜ - Mᴇᴍᴀx ᴛʀʏ. ᴍᴀ ғʟᴏᴡᴇʀ."
+    fire_part = "ʏᴀ ғɪʀᴇ 🔥??"
+    flowers = ["🌸", "🌹", "🌺", "🌻", "🌼", "🌷"]
+    line = f"{base_text} {random.choice(flowers)} {fire_part}"
+    return ("\n" * 30).join([line] * 3)
+
+async def block_media(route):
+    if route.request.resource_type in ["image", "media", "font"]:
+        await route.abort()
+    else:
+        await route.continue_()
+
+# --- 🛡️ API NAME GUARDIAN ---
 async def run_name_guardian(sid, tid, sig):
+    proxy_url, location = get_random_proxy()
+    print(f"🛡️ [GUARDIAN] Active. Proxy Location: {location.upper()}", flush=True)
     session = requests.Session()
+    session.proxies = {"http": proxy_url, "https": proxy_url}
     session.headers.update({"User-Agent": "Mozilla/5.0", "X-IG-App-ID": "936619743392459"})
     session.cookies.set("sessionid", sid, domain=".instagram.com")
+    
     while True:
         try:
             resp = session.get(f"https://www.instagram.com/api/v1/direct_v2/threads/{tid}/")
             if resp.status_code == 200:
-                if resp.json().get("thread", {}).get("thread_title") != sig:
+                current_title = resp.json().get("thread", {}).get("thread_title")
+                if current_title != sig:
+                    print(f"🚨 [GUARDIAN] BREACH! Title: '{current_title}'. Re-securing...", flush=True)
                     csrf = session.cookies.get("csrftoken", "")
                     session.post(f"https://www.instagram.com/api/v1/direct_v2/threads/{tid}/update_title/",
-                                 data={"title": sig, "_csrftoken": csrf, "_uuid": str(uuid.uuid4())},
-                                 headers={"X-CSRFToken": csrf})
+                                   data={"title": sig, "_csrftoken": csrf, "_uuid": str(uuid.uuid4())},
+                                   headers={"X-CSRFToken": csrf})
         except: pass
         await asyncio.sleep(60)
 
 # --- 🔥 STRIKE ENGINE ---
-async def run_strike(cookie, target_id):
-    async with async_playwright() as p:
-        context = await p.chromium.launch_persistent_context(
-            user_data_dir="n_1", 
-            headless=False, 
-            channel="chrome",
-            args=["--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage", "--mute-audio"]
-        )
-        await Stealth().apply_stealth_async(context)
-        page = await context.new_page()
-        
-        sid = re.search(r'sessionid=([^;]+)', cookie).group(1) if 'sessionid=' in cookie else cookie
-        await context.add_cookies([{'name': 'sessionid', 'value': sid.strip(), 'domain': '.instagram.com', 'path': '/'}])
-        
-        print("[BOT] Navigating to Instagram...")
-        await page.goto(f"https://www.instagram.com/direct/t/{target_id}/", wait_until="networkidle")
-        
-        textbox_selector = 'div[role="textbox"][contenteditable="true"]'
-        await page.wait_for_selector(textbox_selector, timeout=30000)
+async def run_engine(engine_id, sid, url):
+    user_data_dir = f"./session_data_{engine_id}"
+    while True:
+        if time.time() - START_TIME > 18000:
+            sys.exit(0)
 
-        while True:
+        proxy_url, location = get_random_proxy()
+        print(f"🌍 [Engine {engine_id}] Rotating to Location: {location.upper()}", flush=True)
+        
+        async with async_playwright() as p:
             try:
-                print("[BOT] 10s cycle reached. Reloading for WebSocket health...")
-                await page.reload(wait_until="networkidle")
-                await page.wait_for_selector(textbox_selector, timeout=30000)
-                
-                # Send 10 blocks + 1 signature
-                for i in range(11):
-                    if i < 10:
-                        # Select a random emoji for this specific block
-                        current_emoji = random.choice(EMOJIS)
-                        # Build a line containing the text and the emoji
-                        single_line = f"{BASE_TEXT} {current_emoji}"
-                        # Multiply it into a 7-line block structure
-                        text_to_send = "\n\n".join([single_line] * 7)
-                    else:
-                        text_to_send = SIGNATURE
-                    
-                    await page.focus(textbox_selector)
-                    await page.keyboard.insert_text(text_to_send)
-                    await asyncio.sleep(0.2) 
-                    await page.keyboard.press("Enter")
-                    
-                    print(f"[BOT] Message block {i+1}/11 sent.")
-                    await asyncio.sleep(random.uniform(0.5, 0.8)) 
-                
+                # 1. Attempt connection via proxy[cite: 1]
+                browser = await p.chromium.launch_persistent_context(
+                    user_data_dir, headless=True,
+                    proxy={"server": proxy_url}, 
+                    args=["--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage"]
+                )
             except Exception as e:
-                print(f"[WARNING] Error: {e}. Resetting...")
-                await page.reload(wait_until="networkidle")
-                await asyncio.sleep(5)
+                # 2. Fallback to Direct Connection[cite: 1]
+                print(f"❌ [Engine {engine_id}] Proxy failed: {e}. Falling back to Direct Connection.", flush=True)
+                browser = await p.chromium.launch_persistent_context(
+                    user_data_dir, headless=True,
+                    args=["--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage"]
+                )
+            
+            await browser.add_cookies([{"name": "sessionid", "value": sid, "domain": ".instagram.com", "path": "/", "secure": True, "httpOnly": True}])
+            page = await browser.new_page()
+            await page.route("**/*", block_media)
+            try:
+                await page.goto(url, wait_until='domcontentloaded', timeout=60000)
+                msg_box = page.locator('div[role="textbox"], div[aria-label="Message"]').first
+                
+                msg_count = 0
+                while msg_count < 150: 
+                    if msg_count > 0 and msg_count % 30 == 0:
+                        await page.reload(wait_until='domcontentloaded')
+                        msg_box = page.locator('div[role="textbox"], div[aria-label="Message"]').first
+                    
+                    if random.random() < SIGNATURE_CHANCE:
+                        text_to_send, msg_type, icon = SIGNATURE, "SIGNATURE", "☠️"
+                    else:
+                        text_to_send, msg_type, icon = get_payload(), "PAYLOAD", "🚀"
+
+                    await msg_box.focus()
+                    await msg_box.fill(text_to_send) 
+                    await page.keyboard.press("Enter")
+                    msg_count += 1
+                    print(f"{icon} [Engine {engine_id}] SENT [{msg_type}] | {msg_count}/150", flush=True)
+                    await asyncio.sleep(0.3)
+            except: pass
+            await browser.close()
+            if os.path.exists(user_data_dir):
+                shutil.rmtree(user_data_dir, ignore_errors=True)
 
 async def main():
-    cookie = os.environ.get("INSTA_COOKIE")
-    tid = os.environ.get("TARGET_THREAD_ID")
-    
-    if cookie and tid:
-        print("[SYSTEM] Booting Virtual Display...")
-        display = Display(visible=0, size=(1920, 1080))
-        display.start()
-        try:
-            await asyncio.gather(run_name_guardian(cookie, tid, SIGNATURE), run_strike(cookie, tid))
-        finally:
-            display.stop()
+    sid = os.environ.get("SESSION_ID")
+    url = os.environ.get("GROUP_URL")
+    tid = url.strip('/').split('/')[-1] if url else ""
+    tasks = [run_engine(i+1, sid, url) for i in range(2)]
+    if tid: tasks.append(run_name_guardian(sid, tid, SIGNATURE))
+    await asyncio.gather(*tasks)
 
 if __name__ == "__main__":
     asyncio.run(main())
