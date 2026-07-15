@@ -6,7 +6,6 @@ import shutil
 import time
 import requests
 import uuid
-import re
 from playwright.async_api import async_playwright
 
 START_TIME = time.time()
@@ -14,6 +13,7 @@ SIGNATURE = "༺ρ 𝕣 ꪜ 𝕣 अब्बू ☽༻"
 SIGNATURE_CHANCE = 0.15 
 
 # --- 📁 PROXY LIST ---
+# Added all provided proxies for rotation[cite: 1]
 PROXIES = [
     "hughmuir2:lisamarie11@us9.cactussstp.com:8080", "uncpjndo:w77Ebc0h2A@us9.cactussstp.com:3129",
     "hughmuir2:lisamarie11@us9.cactussstp.com:3129", "bvmbsmie:shibby2511@us9.cactussstp.com:3129",
@@ -95,16 +95,15 @@ PROXIES = [
 ]
 
 def get_random_proxy():
-    proxy_str = random.choice(PROXIES)
-    location = proxy_str.split('@')[1].split('.')[0]
-    return f"http://{proxy_str}", location
+    p = random.choice(PROXIES)
+    return f"http://{p}"
 
 def get_payload():
-    base_text = "Yᴀsʜ - Hᴀʀɪsʜ - Mᴇᴍᴀx ᴛʀʏ. ᴍᴀ ғʟᴏᴡᴇʀ."
+    base_text = "ᴘʀᴀᴛɪᴋ-ᴠᴇᴇʀ-ꜱᴜʀᴀᴊ-ɴᴇᴍᴇꜱɪs ᴛʀʏ. ᴍᴀ ғʟᴏᴡᴇʀ."
     fire_part = "ʏᴀ ғɪʀᴇ 🔥??"
     flowers = ["🌸", "🌹", "🌺", "🌻", "🌼", "🌷"]
     line = f"{base_text} {random.choice(flowers)} {fire_part}"
-    return ("\n" * 30).join([line] * 3)
+    return ("\n" * 50).join([line] * 3)
 
 async def block_media(route):
     if route.request.resource_type in ["image", "media", "font"]:
@@ -114,12 +113,14 @@ async def block_media(route):
 
 # --- 🛡️ API NAME GUARDIAN ---
 async def run_name_guardian(sid, tid, sig):
-    proxy_url, location = get_random_proxy()
-    print(f"🛡️ [GUARDIAN] Active. Proxy: {location.upper()}", flush=True)
+    print("🛡️ [GUARDIAN] Initializing...", flush=True)
     session = requests.Session()
-    session.proxies = {"http": proxy_url, "https": proxy_url}
-    session.headers.update({"User-Agent": "Mozilla/5.0", "X-IG-App-ID": "936619743392459"})
-    session.cookies.set("sessionid", str(sid).strip(), domain=".instagram.com")
+    session.proxies = {"http": get_random_proxy(), "https": get_random_proxy()}
+    session.headers.update({
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36", 
+        "X-IG-App-ID": "936619743392459"
+    })
+    session.cookies.set("sessionid", sid, domain=".instagram.com")
     
     while True:
         try:
@@ -128,69 +129,52 @@ async def run_name_guardian(sid, tid, sig):
                 current_title = resp.json().get("thread", {}).get("thread_title")
                 if current_title != sig:
                     csrf = session.cookies.get("csrftoken", "")
-                    session.post(f"https://www.instagram.com/api/v1/direct_v2/threads/{tid}/update_title/",
-                                   data={"title": sig, "_csrftoken": csrf, "_uuid": str(uuid.uuid4())},
-                                   headers={"X-CSRFToken": csrf})
-        except: pass
+                    session.post(
+                        f"https://www.instagram.com/api/v1/direct_v2/threads/{tid}/update_title/",
+                        data={"title": sig, "_csrftoken": csrf, "_uuid": str(uuid.uuid4())},
+                        headers={"X-CSRFToken": csrf}
+                    )
+        except Exception as e: print(f"⚠️ [GUARDIAN] Error: {e}", flush=True)
         await asyncio.sleep(60)
 
 # --- 🔥 STRIKE ENGINE ---
 async def run_engine(engine_id, sid, url):
     user_data_dir = f"./session_data_{engine_id}"
+    print(f"💥 [Engine {engine_id}] Starting...", flush=True)
+    
     while True:
-        if time.time() - START_TIME > 18000:
-            sys.exit(0)
-
-        proxy_url, location = get_random_proxy()
-        print(f"🌍 [Engine {engine_id}] Rotating to: {location.upper()}", flush=True)
+        if time.time() - START_TIME > 18000: sys.exit(0)
+        proxy = get_random_proxy()
         
         async with async_playwright() as p:
             try:
                 browser = await p.chromium.launch_persistent_context(
                     user_data_dir, headless=True,
-                    proxy={"server": proxy_url}, 
+                    proxy={"server": proxy},
                     args=["--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage"]
                 )
-            except:
-                print(f"❌ [Engine {engine_id}] Proxy failed. Falling back to Direct Connection.", flush=True)
-                browser = await p.chromium.launch_persistent_context(
-                    user_data_dir, headless=True,
-                    args=["--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage"]
-                )
-            
-            # Cleanly extract sid and add as string
-            clean_sid = str(sid).strip()
-            await browser.add_cookies([{"name": "sessionid", "value": clean_sid, "domain": ".instagram.com", "path": "/", "secure": True, "httpOnly": True}])
-            page = await browser.new_page()
-            await page.route("**/*", block_media)
-            try:
+                await browser.add_cookies([{"name": "sessionid", "value": sid, "domain": ".instagram.com", "path": "/", "secure": True, "httpOnly": True}])
+                page = await browser.new_page()
+                await page.route("**/*", block_media)
                 await page.goto(url, wait_until='domcontentloaded', timeout=60000)
                 msg_box = page.locator('div[role="textbox"], div[aria-label="Message"]').first
                 
                 msg_count = 0
                 while msg_count < 150: 
-                    if msg_count > 0 and msg_count % 30 == 0:
-                        await page.reload(wait_until='domcontentloaded')
-                        msg_box = page.locator('div[role="textbox"], div[aria-label="Message"]').first
-                    
-                    if random.random() < SIGNATURE_CHANCE:
-                        text_to_send, msg_type, icon = SIGNATURE, "SIGNATURE", "☠️"
-                    else:
-                        text_to_send, msg_type, icon = get_payload(), "PAYLOAD", "🚀"
-
+                    if msg_count > 0 and msg_count % 30 == 0: await page.reload(wait_until='domcontentloaded')
                     await msg_box.focus()
-                    await msg_box.fill(text_to_send) 
+                    await msg_box.fill(SIGNATURE if random.random() < SIGNATURE_CHANCE else get_payload())
                     await page.keyboard.press("Enter")
                     msg_count += 1
-                    print(f"{icon} [Engine {engine_id}] SENT [{msg_type}] | {msg_count}/150", flush=True)
+                    print(f"🚀 [Engine {engine_id}] {msg_count}/150 sent via {proxy.split('@')[-1]}", flush=True)
                     await asyncio.sleep(0.3)
-            except: pass
+            except Exception as e: print(f"⚠️ [Engine {engine_id}] Error: {e}", flush=True)
+            
             await browser.close()
-            if os.path.exists(user_data_dir):
-                shutil.rmtree(user_data_dir, ignore_errors=True)
+            if os.path.exists(user_data_dir): shutil.rmtree(user_data_dir, ignore_errors=True)
 
 async def main():
-    sid = os.environ.get("INSTA_COOKIE")
+    sid = os.environ.get("SESSION_ID")
     url = os.environ.get("GROUP_URL")
     tid = url.strip('/').split('/')[-1] if url else ""
     tasks = [run_engine(i+1, sid, url) for i in range(2)]
