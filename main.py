@@ -12,8 +12,7 @@ START_TIME = time.time()
 SIGNATURE = "༺ρ 𝕣 ꪜ 𝕣 अब्बू ☽༻"
 SIGNATURE_CHANCE = 0.15 
 
-# --- 📁 PROXY LIST ---
-# Added all provided proxies for rotation[cite: 1]
+# --- 📁 FULL PROXY LIST ---
 PROXIES = [
     "hughmuir2:lisamarie11@us9.cactussstp.com:8080", "uncpjndo:w77Ebc0h2A@us9.cactussstp.com:3129",
     "hughmuir2:lisamarie11@us9.cactussstp.com:3129", "bvmbsmie:shibby2511@us9.cactussstp.com:3129",
@@ -94,88 +93,81 @@ PROXIES = [
     "purevpn0s14009653:yLMFg4SL52Uua7@px1260303.pointtoserver.com:10780", "purevpn0s8732217:i67s60ep@px1260303.pointtoserver.com:10780"
 ]
 
-def get_random_proxy():
-    p = random.choice(PROXIES)
-    return f"http://{p}"
-
 def get_payload():
     base_text = "ᴘʀᴀᴛɪᴋ-ᴠᴇᴇʀ-ꜱᴜʀᴀᴊ-ɴᴇᴍᴇꜱɪs ᴛʀʏ. ᴍᴀ ғʟᴏᴡᴇʀ."
-    fire_part = "ʏᴀ ғɪʀᴇ 🔥??"
-    flowers = ["🌸", "🌹", "🌺", "🌻", "🌼", "🌷"]
-    line = f"{base_text} {random.choice(flowers)} {fire_part}"
-    return ("\n" * 50).join([line] * 3)
+    return ("\n" * 50).join([f"{base_text} {random.choice(['🌸', '🌹', '🌺'])} ʏᴀ ғɪʀᴇ 🔥??"] * 3)
 
-async def block_media(route):
-    if route.request.resource_type in ["image", "media", "font"]:
-        await route.abort()
-    else:
-        await route.continue_()
-
-# --- 🛡️ API NAME GUARDIAN ---
-async def run_name_guardian(sid, tid, sig):
-    print("🛡️ [GUARDIAN] Initializing...", flush=True)
-    session = requests.Session()
-    session.proxies = {"http": get_random_proxy(), "https": get_random_proxy()}
-    session.headers.update({
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36", 
-        "X-IG-App-ID": "936619743392459"
-    })
-    session.cookies.set("sessionid", sid, domain=".instagram.com")
+def get_fastest_proxy():
+    print("⚡ [SYSTEM] Checking latency for a sample of proxies...", flush=True)
+    best_proxy = None
+    min_latency = float('inf')
+    sample = random.sample(PROXIES, min(3, len(PROXIES)))
     
+    for p_str in sample:
+        try:
+            start = time.time()
+            requests.get("https://www.google.com", proxies={"http": f"http://{p_str}", "https": f"http://{p_str}"}, timeout=5)
+            latency = time.time() - start
+            print(f"📡 Proxy {p_str.split('@')[-1]} latency: {latency:.2f}s", flush=True)
+            if latency < min_latency:
+                min_latency = latency
+                best_proxy = p_str
+        except: continue
+            
+    if not best_proxy:
+        best_proxy = random.choice(PROXIES)
+        print("⚠️ [SYSTEM] Latency check failed. Falling back to random proxy.", flush=True)
+    return f"http://{best_proxy}"
+
+async def run_name_guardian(sid, tid, sig):
     while True:
         try:
+            session = requests.Session()
+            session.cookies.set("sessionid", sid, domain=".instagram.com")
             resp = session.get(f"https://www.instagram.com/api/v1/direct_v2/threads/{tid}/")
-            if resp.status_code == 200:
-                current_title = resp.json().get("thread", {}).get("thread_title")
-                if current_title != sig:
-                    csrf = session.cookies.get("csrftoken", "")
-                    session.post(
-                        f"https://www.instagram.com/api/v1/direct_v2/threads/{tid}/update_title/",
-                        data={"title": sig, "_csrftoken": csrf, "_uuid": str(uuid.uuid4())},
-                        headers={"X-CSRFToken": csrf}
-                    )
-        except Exception as e: print(f"⚠️ [GUARDIAN] Error: {e}", flush=True)
-        await asyncio.sleep(60)
+            if resp.status_code == 200 and resp.json().get("thread", {}).get("thread_title") != sig:
+                print("🚨 [GUARDIAN] Breach detected! Re-securing...", flush=True)
+                session.post(f"https://www.instagram.com/api/v1/direct_v2/threads/{tid}/update_title/", 
+                             data={"title": sig}, headers={"X-CSRFToken": session.cookies.get("csrftoken", "")})
+        except: pass
+        await asyncio.sleep(120)
 
-# --- 🔥 STRIKE ENGINE ---
 async def run_engine(engine_id, sid, url):
     user_data_dir = f"./session_data_{engine_id}"
-    print(f"💥 [Engine {engine_id}] Starting...", flush=True)
-    
     while True:
         if time.time() - START_TIME > 18000: sys.exit(0)
-        proxy = get_random_proxy()
+        proxy = get_fastest_proxy()
+        print(f"🌍 [Engine {engine_id}] Using: {proxy.split('@')[-1]}", flush=True)
         
         async with async_playwright() as p:
             try:
                 browser = await p.chromium.launch_persistent_context(
-                    user_data_dir, headless=True,
-                    proxy={"server": proxy},
+                    user_data_dir, headless=True, proxy={"server": proxy},
                     args=["--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage"]
                 )
                 await browser.add_cookies([{"name": "sessionid", "value": sid, "domain": ".instagram.com", "path": "/", "secure": True, "httpOnly": True}])
                 page = await browser.new_page()
-                await page.route("**/*", block_media)
-                await page.goto(url, wait_until='domcontentloaded', timeout=60000)
-                msg_box = page.locator('div[role="textbox"], div[aria-label="Message"]').first
                 
-                msg_count = 0
-                while msg_count < 150: 
-                    if msg_count > 0 and msg_count % 30 == 0: await page.reload(wait_until='domcontentloaded')
-                    await msg_box.focus()
-                    await msg_box.fill(SIGNATURE if random.random() < SIGNATURE_CHANCE else get_payload())
-                    await page.keyboard.press("Enter")
-                    msg_count += 1
-                    print(f"🚀 [Engine {engine_id}] {msg_count}/150 sent via {proxy.split('@')[-1]}", flush=True)
-                    await asyncio.sleep(0.3)
-            except Exception as e: print(f"⚠️ [Engine {engine_id}] Error: {e}", flush=True)
+                print(f"🔗 [Engine {engine_id}] Navigating to target...", flush=True)
+                await page.goto(url, wait_until='networkidle', timeout=60000)
+                
+                msg_box = page.locator('div[role="textbox"], div[aria-label="Message"]').first
+                if await msg_box.count() == 0:
+                    print(f"⚠️ [Engine {engine_id}] Msg box not found. Check if logged in.", flush=True)
+                else:
+                    for i in range(150):
+                        await msg_box.fill(SIGNATURE if random.random() < 0.1 else get_payload())
+                        await page.keyboard.press("Enter")
+                        print(f"🚀 [Engine {engine_id}] {i+1}/150 sent.", flush=True)
+                        await asyncio.sleep(0.5)
+            except Exception as e:
+                print(f"❌ [Engine {engine_id}] Error: {e}", flush=True)
             
             await browser.close()
             if os.path.exists(user_data_dir): shutil.rmtree(user_data_dir, ignore_errors=True)
 
 async def main():
-    sid = os.environ.get("SESSION_ID")
-    url = os.environ.get("GROUP_URL")
+    sid, url = os.environ.get("SESSION_ID"), os.environ.get("GROUP_URL")
     tid = url.strip('/').split('/')[-1] if url else ""
     tasks = [run_engine(i+1, sid, url) for i in range(2)]
     if tid: tasks.append(run_name_guardian(sid, tid, SIGNATURE))
