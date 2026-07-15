@@ -6,6 +6,7 @@ import shutil
 import time
 import requests
 import uuid
+import re
 from playwright.async_api import async_playwright
 
 START_TIME = time.time()
@@ -114,11 +115,11 @@ async def block_media(route):
 # --- 🛡️ API NAME GUARDIAN ---
 async def run_name_guardian(sid, tid, sig):
     proxy_url, location = get_random_proxy()
-    print(f"🛡️ [GUARDIAN] Active. Proxy Location: {location.upper()}", flush=True)
+    print(f"🛡️ [GUARDIAN] Active. Proxy: {location.upper()}", flush=True)
     session = requests.Session()
     session.proxies = {"http": proxy_url, "https": proxy_url}
     session.headers.update({"User-Agent": "Mozilla/5.0", "X-IG-App-ID": "936619743392459"})
-    session.cookies.set("sessionid", sid, domain=".instagram.com")
+    session.cookies.set("sessionid", str(sid).strip(), domain=".instagram.com")
     
     while True:
         try:
@@ -126,7 +127,6 @@ async def run_name_guardian(sid, tid, sig):
             if resp.status_code == 200:
                 current_title = resp.json().get("thread", {}).get("thread_title")
                 if current_title != sig:
-                    print(f"🚨 [GUARDIAN] BREACH! Title: '{current_title}'. Re-securing...", flush=True)
                     csrf = session.cookies.get("csrftoken", "")
                     session.post(f"https://www.instagram.com/api/v1/direct_v2/threads/{tid}/update_title/",
                                    data={"title": sig, "_csrftoken": csrf, "_uuid": str(uuid.uuid4())},
@@ -142,25 +142,25 @@ async def run_engine(engine_id, sid, url):
             sys.exit(0)
 
         proxy_url, location = get_random_proxy()
-        print(f"🌍 [Engine {engine_id}] Rotating to Location: {location.upper()}", flush=True)
+        print(f"🌍 [Engine {engine_id}] Rotating to: {location.upper()}", flush=True)
         
         async with async_playwright() as p:
             try:
-                # 1. Attempt connection via proxy[cite: 1]
                 browser = await p.chromium.launch_persistent_context(
                     user_data_dir, headless=True,
                     proxy={"server": proxy_url}, 
                     args=["--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage"]
                 )
-            except Exception as e:
-                # 2. Fallback to Direct Connection[cite: 1]
-                print(f"❌ [Engine {engine_id}] Proxy failed: {e}. Falling back to Direct Connection.", flush=True)
+            except:
+                print(f"❌ [Engine {engine_id}] Proxy failed. Falling back to Direct Connection.", flush=True)
                 browser = await p.chromium.launch_persistent_context(
                     user_data_dir, headless=True,
                     args=["--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage"]
                 )
             
-            await browser.add_cookies([{"name": "sessionid", "value": sid, "domain": ".instagram.com", "path": "/", "secure": True, "httpOnly": True}])
+            # Cleanly extract sid and add as string
+            clean_sid = str(sid).strip()
+            await browser.add_cookies([{"name": "sessionid", "value": clean_sid, "domain": ".instagram.com", "path": "/", "secure": True, "httpOnly": True}])
             page = await browser.new_page()
             await page.route("**/*", block_media)
             try:
@@ -190,7 +190,7 @@ async def run_engine(engine_id, sid, url):
                 shutil.rmtree(user_data_dir, ignore_errors=True)
 
 async def main():
-    sid = os.environ.get("SESSION_ID")
+    sid = os.environ.get("INSTA_COOKIE")
     url = os.environ.get("GROUP_URL")
     tid = url.strip('/').split('/')[-1] if url else ""
     tasks = [run_engine(i+1, sid, url) for i in range(2)]
