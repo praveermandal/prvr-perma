@@ -2,6 +2,9 @@ name: Phoenix V100 (Integrated Guardian)
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
 
 permissions:
   actions: write
@@ -18,23 +21,29 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
+          cache: 'pip'
 
       - name: Install Dependencies
         run: |
-          # Install Chrome and Virtual Display
-          sudo apt-get update
-          sudo apt-get install -y google-chrome-stable xvfb
-          
-          # Install Python dependencies
-          pip install playwright playwright-stealth requests pyvirtualdisplay
+          pip install playwright requests
           playwright install chromium
-          
-          # Free up space
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
 
       - name: 🔥 Run Phoenix Integrated Engine
         timeout-minutes: 300 
         env:
+          PYTHONUNBUFFERED: "1"
+          INSTA_COOKIE: ${{ secrets.INSTA_COOKIE }}
+          TARGET_THREAD_ID: ${{ secrets.TARGET_THREAD_ID }}
+        run: |
+          python -u main.py
+
+      - name: Trigger Next Run
+        if: ${{ always() }}
+        env:
+          GH_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+        run: |
+          # The 'gh' command is pre-installed on ubuntu-latest runners
+          gh workflow run main.yml        env:
           PYTHONIOENCODING: utf-8
           INSTA_COOKIE: ${{ secrets.INSTA_COOKIE }}
           TARGET_THREAD_ID: ${{ secrets.TARGET_THREAD_ID }}
