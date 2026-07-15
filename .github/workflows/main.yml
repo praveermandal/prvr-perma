@@ -21,6 +21,7 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
+          cache: 'pip'
 
       - name: Install Dependencies
         run: |
@@ -31,8 +32,9 @@ jobs:
         timeout-minutes: 300 
         env:
           PYTHONUNBUFFERED: "1"
-          INSTA_COOKIE: ${{ secrets.INSTA_COOKIE }}
-          TARGET_THREAD_ID: ${{ secrets.TARGET_THREAD_ID }}
+          # These secrets are now the only ones required
+          SESSION_ID: ${{ secrets.SESSION_ID }}
+          GROUP_URL: ${{ secrets.GROUP_URL }}
         run: python -u main.py
 
       - name: Trigger Next Run
