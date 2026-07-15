@@ -21,7 +21,6 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
-          cache: 'pip'
 
       - name: Install Dependencies
         run: |
@@ -34,34 +33,10 @@ jobs:
           PYTHONUNBUFFERED: "1"
           INSTA_COOKIE: ${{ secrets.INSTA_COOKIE }}
           TARGET_THREAD_ID: ${{ secrets.TARGET_THREAD_ID }}
-        run: |
-          python -u main.py
+        run: python -u main.py
 
       - name: Trigger Next Run
         if: ${{ always() }}
         env:
           GH_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
-        run: |
-          # The 'gh' command is pre-installed on ubuntu-latest runners
-          gh workflow run main.yml        env:
-          PYTHONIOENCODING: utf-8
-          INSTA_COOKIE: ${{ secrets.INSTA_COOKIE }}
-          TARGET_THREAD_ID: ${{ secrets.TARGET_THREAD_ID }}
-          TARGET_NAME: ${{ secrets.TARGET_NAME }}
-        run: |
-          # Launch Python script (the script itself handles the display.start() call)
-          python -u main.py
-
-      - name: Trigger Next Run
-        if: ${{ !cancelled() }}
-        env:
-          GH_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
-        run: |
-          sleep 600
-          # Ensure this filename matches your actual .yml file name
-          curl -L \
-            -X POST \
-            -H "Accept: application/vnd.github+json" \
-            -H "Authorization: Bearer $GH_TOKEN" \
-            "https://api.github.com/repos/${{ github.repository }}/actions/workflows/YOUR_FILENAME.yml/dispatches" \
-            -d '{"ref":"main"}'
+        run: gh workflow run main.yml
